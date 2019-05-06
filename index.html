@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Controle de Estoque</title>
+    <!-- Inlcuindo bootstrap  -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" href="css/dataTables.bootstrap.min.css">
+    
+    <link href="https://fonts.googleapis.com/css?family=Indie+Flower|Roboto:400,700" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="style.css" />
+    
+</head>
+<body>
+
+    <div class="container" style="margin-top: 10px;">
+        <!-- Classe modal do bootstrap-->
+        <div id="tabela" class="modal fade"> <!--Janela do botao adicionar-->
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title">Dados do Produto</h2>
+                    </div>
+
+                    <div class="modal-body">
+                        <div id="editar"> <!-- campos onde o usuario cadastra o produto-->
+                            <input type="text" class="form-control" placeholder="Nome do Produto" id="nome"><br>
+                            <input class="form-control" id="marca" placeholder="Marca do Produto"><br>
+                            <input class="form-control" id="quantidade" placeholder="Quantidade"><br>
+                            <input type="hidden" id="editarID" value="0"> 
+                        </div>
+                        
+                       
+                    </div>
+
+                    <div class="modal-footer"> <!--Botao "Salvar", quando clicado chama função alteraDados, que ira verificar se os dados sao validos para serem salvos -->
+                        <input type="button" id="botaoSalvar" onclick="alteraDados('inserir')" value="Salvar" class="btn btn-warning">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row"> 
+            <div class="col-md-8 col-md-offset-2">
+                <h1>Controle de Estoque</h1>
+
+                <input style="float: right" type="button" class="btn btn-warning" id="inserir" value="Adicionar">
+                <br><br>
+                <table class="table table-hover "> <!--Tabela onde serão mostrados os dados que ja estao no banco de dados-->
+                    <thead>
+                        <tr>
+                            <td>ID</td>
+                            <td>Nome do Produto</td>
+                            <td>Marca</td>
+                            <td>Quantidade</td>
+                            <td>Opções</td>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                    </tbody>
+                </table>
+
+            </div>
+        </div>
+    </div>
+
+    
+    <script src="http://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script src="js/jquery.dataTables.min.js" type="text/javascript"></script>
+    <script src="js/dataTables.bootstrap.min.js" type="text/javascript"></script>
+    <script type="text/javascript">
+      
+        $(document).ready(function() { //incializa a tabela onde é mostrado os produtos e o botao "Adicionar"
+            $("#inserir").on('click', function () { 
+               $("#tabela").modal('show'); 
+            });
+
+            $("#tabela").on('hidden.bs.modal', function () {
+               $("#editar").fadeIn();
+               $("#editarID").val(0);
+               $("#quantidade").val("");
+               $("#marca").val("");
+               $("#nome").val("");
+               $("#botaoSalvar").attr('value', 'Salvar').attr('onclick', "alteraDados('inserir')").fadeIn();
+            });
+
+            pegarDados(0, 50);
+        });
+
+        function deleteRow(listaID) { //Função para deletar um Produto do estoque quando apertado o respectivo botao de deletar
+            if (confirm('Você tem certeza disso ?')) { // quando apertado o OK, deleta o item do estoque e da tabela com ajax
+                $.ajax({
+                    url: 'processos.php',
+                    method: 'POST',
+                    dataType: 'text',
+                    data: {
+                        key: 'deleteRow',
+                        listaID: listaID
+                    }, success: function (response) {
+                        $("#nome_"+listaID).parent().remove();
+                    }
+                });
+            }
+        }
+
+        function editar(listaID) { //função para editar algum Produto do banco de dados
+            $.ajax({
+                url: 'processos.php',
+                method: 'POST',
+                dataType: 'json',
+                data: {
+                    key: 'pegarRow',
+                    listaID: listaID
+                }, success: function (response) {//quando tem a reposta positiva do botao "salvar alterações"
+                    //$("#editar").fadeIn();
+                    $("#editarID").val(listaID);
+                    $("#quantidade").val(response.quantidade);
+                    $("#marca").val(response.marca);
+                    $("#nome").val(response.nome);
+                    $("#botaoSalvar").attr('value', 'Salvar Alterações').attr('onclick', "alteraDados('update')");
+                    $("#tabela").modal('show');
+                    
+                }
+            });
+        }
+
+        function pegarDados(start, limit) { //Pega os dados para serem exibidos na tabela
+            $.ajax({
+                url: 'processos.php',
+                method: 'POST',
+                dataType: 'text',
+                data: {
+                    key: 'pegarDados',
+                    start: start,
+                    limit: limit
+                }, success: function (response) {
+                    if (response != "reachedMax") {
+                        $('tbody').append(response);
+                        start += limit;
+                        pegarDados(start, limit);
+                    } else
+                        $(".table").DataTable();
+                }
+            });
+        }
+        
+        function alteraDados(key) { // Função para inserir e editar dados
+            var nome = $("#nome");
+            var marca = $("#marca");
+            var quantidade = $("#quantidade");
+            var editarID = $("#editarID");
+
+            if (isNotEmpty(nome) && isNotEmpty(marca) && isNotEmpty(quantidade)) { //checa campos vazios
+                $.ajax({
+                   url: 'processos.php',
+                   method: 'POST',
+                   dataType: 'text',
+                   data: {
+                       key: key,
+                       nome: nome.val(),
+                       marca: marca.val(),
+                       quantidade: quantidade.val(),
+                       listaID: editarID.val()
+                   }, success: function (response) {
+                       if (response != "success")
+                           alert(response);
+                       else {
+                           $("#nome_"+editarID.val()).html(nome.val());
+                           $("#marca_"+editarID.val()).html(marca.val());
+                           $("#quantidade_"+editarID.val()).html(quantidade.val());
+                           nome.val('');
+                           marca.val('');
+                           quantidade.val('');
+                           $("#tabela").modal('hide');
+                           $("#botaoSalvar").attr('value', 'Add').attr('onclick', "alteraDados('inserir')");
+                       }
+                   }
+                });
+            }
+        }
+        //Função para checar se o campo para adicionar esta vazio, caso esteja cria uma borda vermelha no campo vazio
+        function isNotEmpty(caller) {
+            if (caller.val() == '') {
+                caller.css('border', '1px solid red');
+                return false;
+            } else
+                caller.css('border', '');
+
+            return true;
+        }
+    </script>
+</body>
+</html>
